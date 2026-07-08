@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hospital_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-hospital_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme_en_env}
+      POSTGRES_DB: ${DB_NAME:-glosas_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    networks:
+      - hospital_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hospital_admin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: hospital_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@hospital.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - hospital_net
+
+  # --- Se activarán en los siguientes pasos ---
+  # backend-nestjs:
+  #   build: ./backend-nestjs
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - hospital_net
+  #
+  # microservicio-ia:
+  #   build: ./microservicio-ia
+  #   networks:
+  #     - hospital_net
+
+networks:
+  hospital_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
