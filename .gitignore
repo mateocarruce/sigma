@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════
+# SIGMA - .gitignore
+# ═══════════════════════════════════════════════
+
+# ---- Variables de entorno (NUNCA subir secretos) ----
+.env
+.env.local
+.env.*.local
+
+# ---- Node.js (backend y frontend) ----
+node_modules/
+dist/
+build/
+.npm/
+npm-debug.log*
+
+# ---- Python (ml) ----
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# ---- Docker ----
+*.log
+
+# ---- Editor / SO ----
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# ---- Vite ----
+frontend/dist/
+frontend/.vite/
+
+# ---- Compilados de NestJS ----
+backend/dist/
