@@ -12,8 +12,14 @@ export class Tarifa {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'codigo_tpsns', type: 'varchar', length: 50, unique: true })
+  @Column({ name: 'codigo_tpsns', type: 'varchar', length: 50 })
   codigoTpsns: string;
+
+  // Nivel de atención (I/II/III) — el mismo código TPSNS puede tener un
+  // valor oficial distinto según el nivel del establecimiento. Junto con
+  // codigoTpsns forman la clave única real (ver migración 06).
+  @Column({ type: 'varchar', length: 10 })
+  nivel: string;
 
   @Column({ type: 'text' })
   descripcion: string;
@@ -30,6 +36,8 @@ export class Tarifa {
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 
+  // Lado inverso de DetalleServicio.tarifa (@ManyToOne(() => Tarifa, (t) => t.detalles)).
+  // Se me había olvidado al reescribir esta entidad para agregar `nivel`.
   @OneToMany(() => DetalleServicio, (d) => d.tarifa)
   detalles: DetalleServicio[];
 }

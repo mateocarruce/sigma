@@ -29,7 +29,7 @@ const ESTADOS_AUDITABLES: EstadoFila[] = [EstadoFila.PENDIENTE, EstadoFila.RECHA
 export class AuditoriaService {
   private readonly logger = new Logger(AuditoriaService.name);
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
 
   /**
    * Lista las líneas que un auditor debe revisar: PENDIENTE (recién
@@ -96,10 +96,9 @@ export class AuditoriaService {
           `El detalle ${detalleId} está en estado ${detalle.estadoFila} y ya no puede auditarse.`,
         );
       }
+      const requiereValorOficialManual = detalle.valorUnitarioOficial === null;
 
-      const eraRechazoAutomatico = detalle.estadoFila === EstadoFila.RECHAZADO;
-
-      this.aplicarDecision(detalle, dto, eraRechazoAutomatico);
+      this.aplicarDecision(detalle, dto, requiereValorOficialManual);
 
       await queryRunner.manager.save(DetalleServicio, detalle);
 
@@ -117,9 +116,8 @@ export class AuditoriaService {
         file: null,
         ipAddress: ctx.ipAddress ?? null,
         userAgent: ctx.userAgent ?? null,
-        resultado: `Detalle ${detalleId}: decision=${dto.decision}${
-          dto.motivoGlosa ? `, motivo="${dto.motivoGlosa}"` : ''
-        }`,
+        resultado: `Detalle ${detalleId}: decision=${dto.decision}${dto.motivoGlosa ? `, motivo="${dto.motivoGlosa}"` : ''
+          }`,
       });
 
       await queryRunner.commitTransaction();
@@ -144,20 +142,21 @@ export class AuditoriaService {
   private aplicarDecision(
     detalle: DetalleServicio,
     dto: DecidirAuditoriaDto,
-    eraRechazoAutomatico: boolean,
+    requiereValorOficialManual: boolean,
   ): void {
+
+
     switch (dto.decision) {
       case DecisionAuditoria.APROBADO: {
-        if (eraRechazoAutomatico) {
-          // Una línea rechazada automáticamente no tiene precio oficial
-          // (valorUnitarioOficial es NULL, ver migration-fix-check-constraint.sql).
-          // El auditor DEBE proveerlo manualmente para poder aprobarla.
+ if (requiereValorOficialManual) {
           if (dto.valorUnitarioOficial === undefined || dto.valorSolicitado === undefined) {
             throw new BadRequestException(
-              'Para aprobar una línea rechazada automáticamente debes indicar valorUnitarioOficial y valorSolicitado.',
+              'Esta línea no tiene valor oficial registrado (código TPSNS no encontrado, o insumo/medicamento sin catálogo AS-400 disponible). ' +
+                'Debes indicar valorUnitarioOficial y valorSolicitado manualmente para aprobarla.',
             );
           }
         }
+
         if (dto.valorUnitarioOficial !== undefined) {
           detalle.valorUnitarioOficial = dto.valorUnitarioOficial;
         }

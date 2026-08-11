@@ -127,15 +127,14 @@ export class DetalleServicio {
    */
   @BeforeInsert()
   @BeforeUpdate()
-  validarConsistenciaFk() {
-    // RECHAZADO tiene dos orígenes posibles (igual que el CHECK chk_tipo_item_fk):
-    //   a) Rechazo automático de PlanillasService: código no encontrado en
-    //      ningún catálogo -> ninguna FK asignada. Válido, no sigue validando.
-    //   b) Rechazo definitivo de un auditor (AuditoriaService) sobre una
-    //      línea que SÍ tenía código válido -> debe seguir cumpliendo la
-    //      misma consistencia tipoItem/FK que cualquier otro estado, por
-    //      eso NO se corta aquí: cae al bloque de abajo.
-    if (this.estadoFila === EstadoFila.RECHAZADO && !this.tarifa && !this.medicamentoInsumo) {
+validarConsistenciaFk() {
+    // "Sin catálogo vinculado" (ambas FK null) es válido en cualquier
+    // estado: RECHAZADO (TPSNS no encontrado), PENDIENTE (insumo sin
+    // catálogo AS-400 disponible, recién procesado) o AUDITADO (el
+    // auditor lo aprobó manualmente sin vincular un registro real de
+    // catálogo, porque no existe uno). Coincide con chk_tipo_item_fk
+    // en la base de datos (ver migración 08).
+    if (!this.tarifa && !this.medicamentoInsumo) {
       return;
     }
 
@@ -153,4 +152,5 @@ export class DetalleServicio {
       }
     }
   }
+
 }

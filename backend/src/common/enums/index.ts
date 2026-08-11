@@ -57,3 +57,17 @@ export enum TipoMedicamentoInsumo {
   MEDICAMENTO = 'MEDICAMENTO',
   INSUMO = 'INSUMO',
 }
+export enum TipoResultado {
+  INDIVIDUAL = 'INDIVIDUAL',
+  CONSOLIDADA = 'CONSOLIDADA',
+}
+
+export enum FormatoArchivo {
+  XLSX = 'xlsx',
+  PDF = 'pdf',
+}
+
+export enum TipoPlantilla {
+  INDIVIDUAL = 'INDIVIDUAL',
+  CONSOLIDADA = 'CONSOLIDADA',
+}

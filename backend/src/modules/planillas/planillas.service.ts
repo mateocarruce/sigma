@@ -16,7 +16,7 @@ import { User } from '../users/entities/user.entity';
 
 import { EstadoFila, TipoItem, PlanillaEstado, DecisionAuditoria, AuditAction } from '../../common/enums';
 import { detectarFilaCabeceraYMapa, MapaColumnas } from './utils/matriz-header-mapper';
-import { ResultadoProcesamiento, FilaRechazada } from './interfaces/resultado-procesamiento.interface';
+import { ResultadoProcesamiento, FilaRechazada, FilaSinCatalogo } from './interfaces/resultado-procesamiento.interface';
 import { ProcesarPlanillaDto } from './dto/procesar-planilla.dto';
 
 interface ContextoRequest {
@@ -29,7 +29,7 @@ interface ContextoRequest {
 export class PlanillasService {
   private readonly logger = new Logger(PlanillasService.name);
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) { }
 
   /**
    * Punto de entrada principal: recibe el buffer del .xlsm, la planilla ya
@@ -52,7 +52,9 @@ export class PlanillasService {
       expedientesCreados: 0,
       detallesInsertados: 0,
       detallesRechazados: 0,
+      detallesSinCatalogo: 0,
       filasRechazadas: [],
+      filasSinCatalogo: [],
       valorTotalSolicitado: 0,
     };
 
@@ -141,18 +143,20 @@ export class PlanillasService {
 
       await queryRunner.commitTransaction();
       return resultado;
-    } catch (error) {
+    } catch (error: unknown) {
       await queryRunner.rollbackTransaction();
-      this.logger.error(`Error procesando planilla ${dto.planillaId}: ${error.message}`, error.stack);
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error procesando planilla ${dto.planillaId}: ${message}`, stack);
 
       // La actualización de estado a ERROR se hace en una transacción nueva,
       // separada, porque la transacción principal ya fue revertida.
-      await this.marcarPlanillaComoError(dto.planillaId, ctx, error.message);
+      await this.marcarPlanillaComoError(dto.planillaId, ctx, message);
 
       if (error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
       }
-      throw new BadRequestException(`Error procesando la matriz: ${error.message}`);
+      throw new BadRequestException(`Error procesando la matriz: ${message}`);
     } finally {
       await queryRunner.release();
     }
@@ -248,9 +252,11 @@ export class PlanillasService {
       : leer('descripcion');
 
     const cantidad = this.parsearNumero(leer('cantidad')) ?? 1;
-    const valorUnitarioSolicitado = this.parsearNumero(leer('valorUnitarioSolicitado')) ?? 0;
-    const porcentajeModificador = this.parsearNumero(leer('porcentajeModificador')) ?? 0;
+    const valorUnitarioSolicitado = esMedicamento
+      ? this.parsearNumero(leer('valorUnitarioMedicamento')) ?? 0
+      : this.parsearNumero(leer('valorUnitarioTpsns')) ?? 0; const porcentajeModificador = this.parsearNumero(leer('porcentajeModificador')) ?? 0;
     const clasificador = leer('clasificador') || null;
+    const nivel = leer('nivel') || 'II';
     const fechaAtencion =
       this.parsearFecha(leer('fechaAtencion')) ?? tramite.mesAnoServicio;
 
@@ -264,16 +270,57 @@ export class PlanillasService {
       });
     } else {
       tarifa = await queryRunner.manager.findOne(Tarifa, {
-        where: { codigoTpsns: codigoOriginal },
+        where: { codigoTpsns: codigoOriginal, nivel },
       });
     }
+
 
     const encontrado = esMedicamento ? !!medicamento : !!tarifa;
 
     if (!encontrado) {
-      // Código no encontrado: se inserta la fila como RECHAZADA (sin FK a
-      // catálogo, ver migration-fix-check-constraint.sql) y se registra la
-      // decisión automática para que el auditor investigue.
+      if (esMedicamento) {
+        // No tenemos catálogo AS-400 disponible: NO es un rechazo, es una
+        // línea que un humano debe validar y completar el valor oficial
+        // manualmente vía POST /auditoria/:id/decidir (igual que un
+        // rechazo automático de TPSNS, pero sin decisión automática
+        // registrada porque no hubo ningún "rechazo" real).
+        const subtotalProvisional = round2(cantidad * valorUnitarioSolicitado);
+
+        const detallePendiente = queryRunner.manager.create(DetalleServicio, {
+          expediente,
+          tipoItem,
+          tarifa: null,
+          medicamentoInsumo: null,
+          fechaAtencion,
+          codigoOriginal,
+          descripcion: descripcionFila || null,
+          cantidad,
+          valorUnitarioSolicitado,
+          valorUnitarioOficial: null, // el auditor lo completa manualmente
+          subtotal: subtotalProvisional,
+          clasificador,
+          porcentajeModificador,
+          valorModificador: 0,
+          valorSolicitado: subtotalProvisional, // provisional, sin modificador
+          estadoFila: EstadoFila.PENDIENTE,
+        });
+        await queryRunner.manager.save(DetalleServicio, detallePendiente);
+
+        resultado.detallesInsertados++;
+        resultado.detallesSinCatalogo++;
+        resultado.filasSinCatalogo.push({
+          fila: numeroFila,
+          tramite: numeroTramite,
+          cedula,
+          codigoOriginal,
+          descripcion: descripcionFila || '(sin descripción)',
+        });
+        // No sumamos a valorTotalSolicitado: es un monto provisional sin
+        // validar, no debe contarse como "solicitado confirmado" todavía.
+        return;
+      }
+
+      // TPSNS: SÍ tenemos catálogo cargado — si no aparece, es un rechazo real.
       const detalleRechazado = queryRunner.manager.create(DetalleServicio, {
         expediente,
         tipoItem,
@@ -298,7 +345,7 @@ export class PlanillasService {
         detalleServicio: guardado,
         auditor: null,
         decision: DecisionAuditoria.RECHAZADO,
-        motivoGlosa: 'Código no encontrado en catálogo (AS-400/TPSNS)',
+        motivoGlosa: `Código no encontrado en catálogo TPSNS para nivel ${nivel}`,
       });
       await queryRunner.manager.save(DecisionAuditoriaEntity, decisionAutomatica);
 
@@ -309,7 +356,7 @@ export class PlanillasService {
         cedula,
         codigoOriginal,
         tipoItem,
-        motivo: 'Código no encontrado en catálogo (AS-400/TPSNS)',
+        motivo: `Código no encontrado en catálogo TPSNS para nivel ${nivel}`,
       };
       resultado.filasRechazadas.push(rechazo);
       return;
@@ -458,8 +505,9 @@ export class PlanillasService {
         });
         await manager.save(AuditLog, log);
       });
-    } catch (e) {
-      this.logger.error(`No se pudo marcar la planilla ${planillaId} como ERROR: ${e.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.error(`No se pudo marcar la planilla ${planillaId} como ERROR: ${message}`);
     }
   }
 }

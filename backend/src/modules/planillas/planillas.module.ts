@@ -1,8 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PlanillasController } from './planillas.controller';
+import { PlantillasController } from './plantillas.controller';
 import { PlanillasService } from './planillas.service';
+import { ExportadorExcelService } from './services/exportador-excel.service';
+import { ExportadorPdfService } from './services/exportador-pdf.service';
+import { GestionPlantillasService } from './services/gestion-plantillas.service';
+import { GeneradorIndividualesService } from './services/generador-individuales.service';
+import { GeneradorConsolidadasService } from './services/generador-consolidadas.service';
 import { Planilla } from './entities/planilla.entity';
+import { ResultadoPlanilla } from './entities/resultado-planilla.entity';
+import { Plantilla } from './entities/plantilla.entity';
 import { Tramite } from '../tramites/entities/tramite.entity';
 import { Expediente } from '../expedientes/entities/expediente.entity';
 import { DetalleServicio } from '../detalles/entities/detalle-servicio.entity';
@@ -22,10 +30,19 @@ import { AuditLog } from '../audit-log/entities/audit-log.entity';
       MedicamentoInsumo,
       DecisionAuditoriaEntity,
       AuditLog,
+      ResultadoPlanilla,
+      Plantilla,
     ]),
   ],
-  controllers: [PlanillasController],
-  providers: [PlanillasService],
+  controllers: [PlanillasController, PlantillasController],
+  providers: [
+    PlanillasService,
+    ExportadorExcelService,
+    ExportadorPdfService,
+    GestionPlantillasService,
+    GeneradorIndividualesService,
+    GeneradorConsolidadasService,
+  ],
   exports: [PlanillasService],
 })
 export class PlanillasModule {}
