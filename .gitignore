@@ -22,6 +22,10 @@ __pycache__/
 venv/
 *.egg-info/
 
+# ---- Modelo ML (se regenera con train_model.py / en el build de Docker) ----
+ml/model.pkl
+ml/dataset_sintetico.csv
+
 # ---- Docker ----
 *.log
 
