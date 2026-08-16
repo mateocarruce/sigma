@@ -1,5 +1,5 @@
 """
-SIGMA - Entrenamiento del modelo de deteccion de anomalias (Sprint 2 / US-05, US-06)
+SIGMA -d Entrenamiento del modelo de deteccion de anomalias (Sprint 2 / US-05, US-06)
 
 Genera un dataset SINTETICO (no hay datos historicos reales etiquetados del
 hospital) a partir de reglas de negocio conocidas de anomalia:

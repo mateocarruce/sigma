@@ -23,8 +23,12 @@ const config = new DocumentBuilder()
     }),
   );
 
+  // origin: true refleja cualquier origen que pida el navegador (incluido
+  // file:// y localhost en cualquier puerto). Cómodo para desarrollo local
+  // y para el panel.html standalone; para producción hay que volver a
+  // restringirlo a FRONTEND_URL.
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    origin: true,
     credentials: true,
   });
 

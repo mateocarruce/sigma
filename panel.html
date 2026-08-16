@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SIGMA — Panel de pruebas</title>
+<style>
+  :root {
+    --azul: #1d4ed8;
+    --azul-claro: #eff6ff;
+    --verde: #16a34a;
+    --rojo: #dc2626;
+    --naranja: #d97706;
+    --gris: #64748b;
+    --borde: #e2e8f0;
+    --fondo: #f8fafc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--fondo);
+    margin: 0;
+    padding: 24px;
+    color: #1e293b;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitulo { color: var(--gris); font-size: 13px; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 1100px; margin: 0 auto; }
+  .card {
+    background: white;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .card.ancho { grid-column: 1 / -1; }
+  label { display: block; font-size: 12px; color: var(--gris); margin: 10px 0 4px; }
+  input[type=text], input[type=email], input[type=password], input[type=number] {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 6px; font-size: 13px;
+  }
+  input[type=file] { font-size: 12px; margin-top: 4px; }
+  button {
+    background: var(--azul); color: white; border: none; padding: 9px 16px;
+    border-radius: 6px; font-size: 13px; cursor: pointer; margin-top: 12px;
+  }
+  button:hover { opacity: 0.9; }
+  button:disabled { background: var(--gris); cursor: not-allowed; }
+  button.secundario { background: white; color: var(--azul); border: 1px solid var(--azul); }
+  .estado-login { font-size: 12px; margin-top: 10px; padding: 8px; border-radius: 6px; }
+  .estado-login.ok { background: #dcfce7; color: var(--verde); }
+  .estado-login.fail { background: #fee2e2; color: var(--rojo); }
+  .mensaje { font-size: 12px; margin-top: 10px; padding: 8px; border-radius: 6px; white-space: pre-wrap; }
+  .mensaje.ok { background: #dcfce7; color: #166534; }
+  .mensaje.fail { background: #fee2e2; color: #991b1b; }
+  .resumen { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .chip { background: var(--azul-claro); padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+  .chip b { display: block; font-size: 18px; color: var(--azul); }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--borde); }
+  th { color: var(--gris); font-weight: 600; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.CRITICO { background: #fee2e2; color: var(--rojo); }
+  .badge.ALTO { background: #ffedd5; color: var(--naranja); }
+  .badge.MEDIO { background: #fef9c3; color: #92400e; }
+  .badge.BAJO { background: #dcfce7; color: var(--verde); }
+  .vacio { color: var(--gris); font-size: 12px; font-style: italic; padding: 10px 0; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h1>SIGMA — Panel de pruebas</h1>
+<div class="subtitulo">Habla directo con tu backend en <code id="urlBackend">http://localhost:3000</code>. No reemplaza al frontend real, es solo para verificar el flujo de riesgo/corrección sin pelear con Swagger.</div>
+
+<div class="grid">
+
+  <!-- LOGIN -->
+  <div class="card">
+    <h2>1. Login</h2>
+    <label>Email</label>
+    <input type="email" id="loginEmail" value="admin@sigma.ec">
+    <label>Password</label>
+    <input type="password" id="loginPassword" value="Sigma1234!">
+    <button onclick="login()">Iniciar sesión</button>
+    <div id="estadoLogin" class="estado-login" style="display:none"></div>
+  </div>
+
+  <!-- PROCESAR -->
+  <div class="card">
+    <h2>2. Procesar planilla (.xlsx / .xlsm)</h2>
+    <label>ID de planilla (ya debe existir en la BD)</label>
+    <input type="number" id="procesarId" value="2">
+    <label>Archivo</label>
+    <input type="file" id="procesarArchivo" accept=".xlsx,.xlsm">
+    <button onclick="procesar()">Procesar</button>
+    <div id="mensajeProcesar" class="mensaje" style="display:none"></div>
+  </div>
+
+  <!-- REVISAR RIESGO -->
+  <div class="card ancho">
+    <h2>3. Revisar riesgo (corre el modelo ML y corrige)</h2>
+    <label>ID de planilla</label>
+    <input type="number" id="revisarId" value="2" style="max-width:160px">
+    <label style="display:flex;align-items:center;gap:6px;margin-top:8px">
+      <input type="checkbox" id="dryRun" style="width:auto"> Solo simular (dryRun, no escribe nada)
+    </label>
+    <button onclick="revisarRiesgo()">Revisar riesgo</button>
+    <div id="mensajeRevisar" class="mensaje" style="display:none"></div>
+    <div id="resumenRevisar" class="resumen"></div>
+    <div id="tablaRevisar"></div>
+  </div>
+
+  <!-- CORRECCIONES -->
+  <div class="card ancho">
+    <h2>4. Ver correcciones aplicadas (rastro de auditoría)</h2>
+    <label>ID de planilla</label>
+    <input type="number" id="correccionesId" value="2" style="max-width:160px">
+    <button onclick="verCorrecciones()">Cargar correcciones</button>
+    <div id="mensajeCorrecciones" class="mensaje" style="display:none"></div>
+    <div id="tablaCorrecciones"></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'http://localhost:3000';
+let token = localStorage.getItem('sigma_token') || '';
+
+function mostrarMensaje(id, texto, ok) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.className = 'mensaje ' + (ok ? 'ok' : 'fail');
+  el.textContent = texto;
+}
+
+async function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const el = document.getElementById('estadoLogin');
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || `Error ${res.status}`);
+    token = data.accessToken || data.access_token;
+    localStorage.setItem('sigma_token', token);
+    el.style.display = 'block';
+    el.className = 'estado-login ok';
+    el.textContent = 'Login OK. Token guardado — ya podés usar el resto del panel.';
+  } catch (e) {
+    el.style.display = 'block';
+    el.className = 'estado-login fail';
+    el.textContent = 'Error: ' + e.message + ' (revisá que el backend esté corriendo en el puerto 3000)';
+  }
+}
+
+async function procesar() {
+  const id = document.getElementById('procesarId').value;
+  const archivo = document.getElementById('procesarArchivo').files[0];
+  if (!archivo) return mostrarMensaje('mensajeProcesar', 'Elegí un archivo primero.', false);
+  const form = new FormData();
+  form.append('planillaId', id);
+  form.append('file', archivo);
+  try {
+    const res = await fetch(`${API}/planillas/procesar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+    mostrarMensaje('mensajeProcesar', `OK — detalles insertados: ${data.detallesInsertados}, rechazados: ${data.detallesRechazados}, sin catálogo: ${data.detallesSinCatalogo}`, true);
+  } catch (e) {
+    mostrarMensaje('mensajeProcesar', 'Error: ' + e.message, false);
+  }
+}
+
+function badge(nivel) {
+  return `<span class="badge ${nivel}">${nivel}</span>`;
+}
+
+function tablaDeCorrecciones(lista, contenedorId, esResumenRevision) {
+  const cont = document.getElementById(contenedorId);
+  if (!lista || lista.length === 0) {
+    cont.innerHTML = '<div class="vacio">Sin correcciones.</div>';
+    return;
+  }
+  const filas = lista.map(c => {
+    if (esResumenRevision) {
+      return `<tr>
+        <td>${c.detalleId}</td>
+        <td>${c.codigoOriginal}</td>
+        <td>$${Number(c.valorAnterior).toFixed(2)}</td>
+        <td>$${Number(c.valorCorregido).toFixed(2)}</td>
+        <td>${badge(c.nivelRiesgo)}</td>
+        <td>${(c.score * 100).toFixed(1)}%</td>
+      </tr>`;
+    }
+    return `<tr>
+      <td>${c.detalleServicio?.id ?? c.detalleServicio}</td>
+      <td>${c.detalleServicio?.codigoOriginal ?? ''}</td>
+      <td>$${Number(c.valorUnitarioSolicitadoAnterior).toFixed(2)}</td>
+      <td>$${Number(c.valorUnitarioSolicitadoCorregido).toFixed(2)}</td>
+      <td>${badge(c.nivelRiesgo)}</td>
+      <td>${(Number(c.scoreRiesgo) * 100).toFixed(1)}%</td>
+      <td style="font-size:11px;color:#64748b">${new Date(c.fechaCorreccion).toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+  cont.innerHTML = `<table>
+    <thead><tr>
+      <th>Detalle</th><th>Código</th><th>Valor anterior</th><th>Valor corregido</th><th>Riesgo</th><th>Score</th>${esResumenRevision ? '' : '<th>Fecha</th>'}
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>`;
+}
+
+async function revisarRiesgo() {
+  const id = document.getElementById('revisarId').value;
+  const dryRun = document.getElementById('dryRun').checked;
+  document.getElementById('resumenRevisar').innerHTML = '';
+  document.getElementById('tablaRevisar').innerHTML = '';
+  try {
+    const res = await fetch(`${API}/planillas/${id}/revisar-riesgo?dryRun=${dryRun}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+    mostrarMensaje('mensajeRevisar', dryRun ? 'Simulación completada (no se escribió nada).' : 'Revisión aplicada.', true);
+    document.getElementById('resumenRevisar').innerHTML = `
+      <div class="chip"><b>${data.detallesEvaluados}</b>evaluados</div>
+      <div class="chip"><b>${data.prediccionesGuardadas}</b>predicciones</div>
+      <div class="chip"><b>${data.corregidos}</b>corregidos</div>
+      <div class="chip"><b>${data.errores.length}</b>errores</div>
+    `;
+    tablaDeCorrecciones(data.correcciones, 'tablaRevisar', true);
+  } catch (e) {
+    mostrarMensaje('mensajeRevisar', 'Error: ' + e.message, false);
+  }
+}
+
+async function verCorrecciones() {
+  const id = document.getElementById('correccionesId').value;
+  document.getElementById('tablaCorrecciones').innerHTML = '';
+  try {
+    const res = await fetch(`${API}/planillas/${id}/correcciones`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
+    mostrarMensaje('mensajeCorrecciones', `${data.length} corrección(es) encontradas.`, true);
+    tablaDeCorrecciones(data, 'tablaCorrecciones', false);
+  } catch (e) {
+    mostrarMensaje('mensajeCorrecciones', 'Error: ' + e.message, false);
+  }
+}
+
+if (token) {
+  document.getElementById('estadoLogin').style.display = 'block';
+  document.getElementById('estadoLogin').className = 'estado-login ok';
+  document.getElementById('estadoLogin').textContent = 'Ya tenías una sesión guardada de antes.';
+}
+</script>
+</body>
+</html>

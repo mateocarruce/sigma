@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { PlanillasModule } from './modules/planillas/planillas.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
+import { PrediccionesModule } from './modules/predicciones/predicciones.module';
 
 // Se listan TODAS las entidades explícitamente (en vez de confiar solo en
 // autoLoadEntities). Motivo: autoLoadEntities únicamente registra las
@@ -26,6 +27,7 @@ import { DetalleServicio } from './modules/detalles/entities/detalle-servicio.en
 import { DecisionAuditoriaEntity } from './modules/auditoria/entities/decision-auditoria.entity';
 import { Factura } from './modules/facturas/entities/factura.entity';
 import { PrediccionRiesgo } from './modules/predicciones/entities/prediccion-riesgo.entity';
+import { CorreccionAutomatica } from './modules/predicciones/entities/correccion-automatica.entity';
 import { AuditLog } from './modules/audit-log/entities/audit-log.entity';
 
 const ALL_ENTITIES = [
@@ -40,6 +42,7 @@ const ALL_ENTITIES = [
   DecisionAuditoriaEntity,
   Factura,
   PrediccionRiesgo,
+  CorreccionAutomatica,
   AuditLog,
 ];
 
@@ -76,6 +79,7 @@ class HealthController {
     AuthModule,
     PlanillasModule,
     AuditoriaModule,
+    PrediccionesModule,
   ],
   controllers: [HealthController],
 })
